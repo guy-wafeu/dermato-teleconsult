@@ -1,0 +1,6 @@
+<resources>
+    <!-- Même valeur que lightColors.bg (mobile/src/theme/tokens.ts) — le fond natif
+         de démarrage et le fond de l'app JS doivent être identiques pour qu'il n'y
+         ait aucune coupure visible entre l'écran natif et le premier rendu React. -->
+    <color name="splashBackground">#F5F7F5</color>
+</resources>

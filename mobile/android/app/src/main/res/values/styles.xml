@@ -1,0 +1,12 @@
+<resources>
+
+    <!-- Base application theme. Forcé en thème clair (jamais DayNight) : l'app
+         n'a qu'une palette claire (voir mobile/src/theme/tokens.ts), donc l'écran
+         natif de démarrage ne doit jamais basculer en sombre selon le système. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Customize your theme here. -->
+        <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <item name="android:windowBackground">@color/splashBackground</item>
+    </style>
+
+</resources>

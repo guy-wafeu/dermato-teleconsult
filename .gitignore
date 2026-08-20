@@ -1,0 +1,5 @@
+# Session/config Claude Code — jamais partie du projet lui-même.
+.claude/
+
+node_modules/
+.DS_Store
