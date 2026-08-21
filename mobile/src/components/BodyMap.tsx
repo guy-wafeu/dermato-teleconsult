@@ -61,6 +61,19 @@ const BACK_SHAPES: ShapeDef[] = [
   { code: "pied_droit", kind: "ellipse", cx: 120, cy: 320, rx: 20, ry: 14 },
 ];
 
+const DIAGRAM_WIDTH = 200;
+const DIAGRAM_HEIGHT = 350;
+// viewBox = "0 0 200 350" rendu à la même taille (200x350) : échelle 1:1, mais
+// gardé comme facteur explicite plutôt qu'en dur pour rester correct si la taille
+// affichée change un jour.
+const SCALE = 1;
+
+function boundingBox(shape: ShapeDef): { x: number; y: number; width: number; height: number } {
+  if (shape.kind === "rect") return { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
+  if (shape.kind === "circle") return { x: shape.cx - shape.r, y: shape.cy - shape.r, width: shape.r * 2, height: shape.r * 2 };
+  return { x: shape.cx - shape.rx, y: shape.cy - shape.ry, width: shape.rx * 2, height: shape.ry * 2 };
+}
+
 interface BodyMapProps {
   selected: string[];
   onChange: (next: string[]) => void;
@@ -109,20 +122,41 @@ export function BodyMap({ selected, onChange }: BodyMapProps) {
       </View>
 
       <View style={[styles.diagramWrap, { backgroundColor: colors.surfaceAlt, borderRadius: radius.lg }]}>
-        <Svg width={200} height={350} viewBox="0 0 200 350">
+        <View style={{ width: DIAGRAM_WIDTH, height: DIAGRAM_HEIGHT }}>
+          <Svg width={DIAGRAM_WIDTH} height={DIAGRAM_HEIGHT} viewBox="0 0 200 350">
+            {shapes.map((shape) => {
+              const common = { fill: fillFor(shape.code), stroke: strokeFor(shape.code), strokeWidth: 1.5 };
+              if (shape.kind === "circle") return <Circle key={shape.code} {...common} cx={shape.cx} cy={shape.cy} r={shape.r} />;
+              if (shape.kind === "ellipse")
+                return <Ellipse key={shape.code} {...common} cx={shape.cx} cy={shape.cy} rx={shape.rx} ry={shape.ry} />;
+              return (
+                <Rect key={shape.code} {...common} x={shape.x} y={shape.y} width={shape.width} height={shape.height} rx={shape.rx} />
+              );
+            })}
+          </Svg>
+          {/* Zones tactiles en calques RN plutôt qu'un onPress posé directement sur les
+              formes SVG : peu fiable avec la New Architecture (Fabric) — le "bonhomme"
+              restait insensible au toucher sur certains appareils malgré un rendu
+              visuel correct. Un Pressable RN natif par zone, positionné en absolu à
+              partir de la même géométrie, est la seule interaction garantie fiable. */}
           {shapes.map((shape) => {
-            const common = {
-              key: shape.code,
-              fill: fillFor(shape.code),
-              stroke: strokeFor(shape.code),
-              strokeWidth: 1.5,
-              onPress: () => toggle(shape.code),
-            };
-            if (shape.kind === "circle") return <Circle {...common} cx={shape.cx} cy={shape.cy} r={shape.r} />;
-            if (shape.kind === "ellipse") return <Ellipse {...common} cx={shape.cx} cy={shape.cy} rx={shape.rx} ry={shape.ry} />;
-            return <Rect {...common} x={shape.x} y={shape.y} width={shape.width} height={shape.height} rx={shape.rx} />;
+            const box = boundingBox(shape);
+            return (
+              <Pressable
+                key={shape.code}
+                onPress={() => toggle(shape.code)}
+                hitSlop={4}
+                style={{
+                  position: "absolute",
+                  left: box.x * SCALE,
+                  top: box.y * SCALE,
+                  width: box.width * SCALE,
+                  height: box.height * SCALE,
+                }}
+              />
+            );
           })}
-        </Svg>
+        </View>
       </View>
 
       {selected.length > 0 ? (

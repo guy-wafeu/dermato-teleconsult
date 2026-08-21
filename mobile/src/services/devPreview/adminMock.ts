@@ -196,6 +196,8 @@ export function listMockAdminConsultations(status?: ConsultationStatus, search?:
       motif: r.motif ?? null,
       submittedAt: r.submittedAt,
       createdAt: r.createdAt,
+      nomComplet: r.nomComplet ?? null,
+      telephoneContact: r.telephoneContact ?? null,
       patient: { nom: r.patient.nom, prenom: r.patient.prenom, telephone: r.patient.telephone },
     }));
 }

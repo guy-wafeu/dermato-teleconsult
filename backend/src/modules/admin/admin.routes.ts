@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate } from "../../middleware/auth.js";
-import { requireAdmin } from "../../middleware/rbac.js";
+import { requireAdmin, requireAdminRole } from "../../middleware/rbac.js";
 import { validate } from "../../middleware/validate.js";
 import {
   changeStatusSchema,
@@ -20,11 +20,18 @@ import {
 
 export const adminRouter = Router();
 
+// requireAdmin seul (pas requireAdminRole) : /me doit rester accessible aux deux
+// rôles — c'est cet appel qui, côté mobile, permet à un compte agent terrain de
+// savoir qu'il est bien connecté et vers quel espace se diriger (voir
+// RootNavigator.tsx). Chaque route au-delà ajoute requireAdminRole pour se
+// réserver au vrai rôle admin.
 adminRouter.use(authenticate, requireAdmin);
 
 adminRouter.get("/me", (req, res) => {
   res.json(req.auth!.admin);
 });
+
+adminRouter.use(requireAdminRole);
 
 adminRouter.get("/stats", async (req, res, next) => {
   try {

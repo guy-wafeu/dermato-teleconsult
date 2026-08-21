@@ -137,6 +137,31 @@ describe("Parcours agent terrain", () => {
     expect(response.status).toBe(403);
   });
 
+  it("un compte de rôle agent peut créer des dossiers terrain mais pas voir la liste/stats admin", async () => {
+    const agent = await createAdmin("agent");
+
+    // /me reste accessible aux deux rôles (voir requireAdmin, admin.routes.ts) —
+    // c'est ce que le mobile utilise pour savoir où rediriger après connexion.
+    const meResponse = await request(app).get("/api/v1/admin/me").set("Authorization", agent.authHeader).send();
+    expect(meResponse.status).toBe(200);
+    expect(meResponse.body.role).toBe("agent");
+
+    // Créer un dossier terrain reste autorisé.
+    const draftResponse = await request(app)
+      .put(`/api/v1/admin/agent-consultations/draft/${randomUUID()}`)
+      .set("Authorization", agent.authHeader)
+      .send({ nomComplet: "Test Agent Role", telephoneContact: `+225${Math.floor(1000000 + Math.random() * 8999999)}` });
+    expect(draftResponse.status).toBe(200);
+
+    // Mais la liste complète, les stats et les changements de statut sont
+    // réservés au rôle admin (voir requireAdminRole, admin.routes.ts).
+    const statsResponse = await request(app).get("/api/v1/admin/stats").set("Authorization", agent.authHeader).send();
+    expect(statsResponse.status).toBe(403);
+
+    const listResponse = await request(app).get("/api/v1/admin/consultations").set("Authorization", agent.authHeader).send();
+    expect(listResponse.status).toBe(403);
+  });
+
   it("permet à l'admin de corriger un dossier déjà soumis via /fields", async () => {
     const patient = await createPatient(app);
     const { consultationId } = await createSubmittedConsultation(app, patient);

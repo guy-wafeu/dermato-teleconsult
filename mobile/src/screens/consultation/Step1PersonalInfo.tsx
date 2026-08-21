@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Text } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { StepScreen } from "./components/StepScreen";
@@ -6,7 +6,6 @@ import { TextField } from "../../components/TextField";
 import { ChoiceGroup } from "../../components/ChoiceGroup";
 import { useTheme } from "../../theme/useTheme";
 import { useConsultationDraftStore } from "../../store/consultationDraftStore";
-import { useAuthStore } from "../../store/authStore";
 import { useSaveDraftStep } from "./useSaveDraftStep";
 import { CONSULTATION_TOTAL_STEPS, type ConsultationStackParamList } from "../../navigation/consultationTypes";
 
@@ -24,23 +23,8 @@ export function Step1PersonalInfo({ navigation }: Props) {
   const { colors, spacing, typography } = useTheme();
   const draft = useConsultationDraftStore((s) => s.draft);
   const updateDraft = useConsultationDraftStore((s) => s.updateDraft);
-  const patient = useAuthStore((s) => s.patient);
   const { saveAndContinue, saving, error } = useSaveDraftStep();
   const [localError, setLocalError] = useState<string | null>(null);
-
-  // Pré-rempli depuis le compte pour éviter de redemander des informations déjà
-  // données à l'inscription — laissé éditable pour le cas où la consultation
-  // concerne un proche (ex. un parent qui remplit le dossier de son enfant) ou un
-  // numéro/email de contact différent pour cette consultation précise.
-  useEffect(() => {
-    if (!patient) return;
-    const patch: { nomComplet?: string; telephoneContact?: string; emailContact?: string } = {};
-    if (!draft.nomComplet) patch.nomComplet = `${patient.prenom} ${patient.nom}`.trim();
-    if (!draft.telephoneContact) patch.telephoneContact = patient.telephone;
-    if (!draft.emailContact) patch.emailContact = patient.email;
-    if (Object.keys(patch).length > 0) updateDraft(patch);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patient]);
 
   const canContinue = Boolean(
     draft.nomComplet && draft.sexe && draft.age && draft.telephoneContact && draft.confirmationWhatsapp !== undefined,

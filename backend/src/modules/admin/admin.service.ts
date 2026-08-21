@@ -24,15 +24,25 @@ export async function listAdminConsultations(options: {
   return prisma.consultation.findMany({
     where: {
       status: options.status,
+      // Cherche à la fois sur l'identité du dossier (nomComplet, saisie à
+      // l'étape 1 — la personne réellement consultée) et sur le compte
+      // connecté (patient.*) : un agent terrain crée des dossiers pour des
+      // tiers sous son propre compte, donc le nom du patient recherché ne
+      // correspond souvent pas au compte associé (voir AdminConsultationsListScreen).
       ...(options.search
         ? {
-            patient: {
-              OR: [
-                { nom: { contains: options.search, mode: "insensitive" } },
-                { prenom: { contains: options.search, mode: "insensitive" } },
-                { telephone: { contains: options.search } },
-              ],
-            },
+            OR: [
+              { nomComplet: { contains: options.search, mode: "insensitive" } },
+              {
+                patient: {
+                  OR: [
+                    { nom: { contains: options.search, mode: "insensitive" } },
+                    { prenom: { contains: options.search, mode: "insensitive" } },
+                    { telephone: { contains: options.search } },
+                  ],
+                },
+              },
+            ],
           }
         : {}),
     },

@@ -11,7 +11,7 @@ const DEV_API_URL = "http://localhost:8080/api/v1";
 // build APK à envoyer au client sans déploiement Cloud Run) — ne fonctionne que
 // tant que la machine de dev + le tunnel restent actifs. À remplacer par une
 // vraie URL de production dès que le backend est déployé pour de bon.
-const PROD_API_URL = "https://compliant-terrain-promotes-documentation.trycloudflare.com/api/v1";
+const PROD_API_URL = "https://whether-temp-bodies-johnny.trycloudflare.com/api/v1";
 
 export const env = {
   apiBaseUrl: __DEV__ ? DEV_API_URL : PROD_API_URL,

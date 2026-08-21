@@ -28,7 +28,10 @@ export interface AdminProfile {
   nom: string;
   prenom: string;
   email: string;
-  role: "admin";
+  // "agent" = compte terrain (souvent partagé entre plusieurs personnes),
+  // accès restreint à la création/correction de ses propres dossiers walk-in —
+  // voir requireAdminRole côté backend et navigation/AgentNavigator.tsx.
+  role: "admin" | "agent";
   isActive: boolean;
 }
 
@@ -52,6 +55,7 @@ export interface ConsultationSummary {
   id: string;
   refNumber: number;
   status: ConsultationStatus;
+  nomComplet: string | null;
   motif: string | null;
   submittedAt: string | null;
   createdAt: string;
@@ -120,6 +124,12 @@ export interface AdminConsultationListItem {
   motif: string | null;
   submittedAt: string | null;
   createdAt: string;
+  // Identité saisie à l'étape 1 du questionnaire pour CE dossier — à préférer à
+  // `patient.*` (le compte connecté) : un agent terrain crée des dossiers pour
+  // des tiers sous son propre compte, donc patient.nom/prenom/telephone est
+  // souvent le sien, pas celui de la personne consultée.
+  nomComplet: string | null;
+  telephoneContact: string | null;
   patient: { nom: string; prenom: string; telephone: string };
 }
 

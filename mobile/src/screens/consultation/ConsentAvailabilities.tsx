@@ -8,13 +8,13 @@ import { ChoiceGroup } from "../../components/ChoiceGroup";
 import { TextField } from "../../components/TextField";
 import { useTheme } from "../../theme/useTheme";
 import { useConsultationDraftStore } from "../../store/consultationDraftStore";
-import { useOfflineStore } from "../../store/offlineStore";
 import { useIsDevPreview } from "../../hooks/useIsDevPreview";
 import { useSaveDraftStep } from "./useSaveDraftStep";
 import { recordConsent as recordConsentApi } from "../../services/api/consultations";
 import { recordWalkInConsent } from "../../services/api/agent";
 import { listAvailabilities } from "../../services/api/availabilities";
 import { ApiError } from "../../services/api/client";
+import { queueConsentLocally } from "../../services/offline/consentQueue";
 import { env } from "../../config/env";
 import { CONSULTATION_TOTAL_STEPS, type ConsultationStackParamList } from "../../navigation/consultationTypes";
 import type { Availability } from "../../types/api";
@@ -47,12 +47,12 @@ const DEV_PREVIEW_AVAILABILITIES: Availability[] = [
 export function ConsentAvailabilities({ navigation }: Props) {
   const { colors, spacing, typography } = useTheme();
   const mode = useConsultationDraftStore((s) => s.mode);
+  const clientUuid = useConsultationDraftStore((s) => s.clientUuid);
   const consultationId = useConsultationDraftStore((s) => s.consultationId);
   const consentGiven = useConsultationDraftStore((s) => s.consentGiven);
   const setConsentGiven = useConsultationDraftStore((s) => s.setConsentGiven);
   const draft = useConsultationDraftStore((s) => s.draft);
   const updateDraft = useConsultationDraftStore((s) => s.updateDraft);
-  const isOnline = useOfflineStore((s) => s.isOnline);
   const isDevPreview = useIsDevPreview();
   const { saveAndContinue, saving, error } = useSaveDraftStep();
   const [consentSaving, setConsentSaving] = useState(false);
@@ -104,11 +104,13 @@ export function ConsentAvailabilities({ navigation }: Props) {
     }
 
     if (!consultationId) {
-      setLocalError(
-        isOnline
-          ? "Synchronisation de vos réponses en cours, patientez un instant puis réessayez."
-          : "Cette étape nécessite une connexion internet. Vos réponses précédentes sont enregistrées sur cet appareil et seront synchronisées automatiquement — réessayez une fois connecté.",
-      );
+      // Dossier pas encore synchronisé (rempli hors ligne depuis le début, ou
+      // étape précédente pas encore rejouée) : on met le consentement en file au
+      // lieu de bloquer l'utilisateur ici, comme pour le reste du formulaire et
+      // les photos — syncEngine l'enverra dès que le dossier aura un id serveur
+      // (voir consentQueue.ts#setConsentConsultationId).
+      queueConsentLocally({ clientUuid, consultationId: null, mode, consentTextVersion: env.consentTextVersion });
+      saveAndContinue(() => navigation.navigate("Summary"));
       return;
     }
 
@@ -121,6 +123,13 @@ export function ConsentAvailabilities({ navigation }: Props) {
       }
     } catch (err) {
       setConsentSaving(false);
+      // Coupure réseau pile à cet instant (status 0, voir services/api/client) :
+      // même filet de secours que ci-dessus plutôt qu'un blocage pur et simple.
+      if (err instanceof ApiError && err.status === 0) {
+        queueConsentLocally({ clientUuid, consultationId, mode, consentTextVersion: env.consentTextVersion });
+        saveAndContinue(() => navigation.navigate("Summary"));
+        return;
+      }
       setLocalError(err instanceof ApiError ? err.message : "Impossible d'enregistrer le consentement. Réessayez.");
       return;
     }

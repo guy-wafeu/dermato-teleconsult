@@ -20,6 +20,15 @@ interface RequestOptions {
   authenticated?: boolean;
 }
 
+// Sans timeout, un serveur/tunnel injoignable qui n'envoie ni réponse ni erreur TCP
+// laisse `fetch` en attente indéfiniment — côté RootNavigator, ça se traduit par un
+// écran de chargement bloqué pour toujours au lieu d'un message d'erreur avec
+// bouton "Réessayer". Vécu en pratique avec le tunnel Cloudflare de dev.
+const REQUEST_TIMEOUT_MS = 15000;
+// Un envoi de photo (jusqu'à 25 Mo, voir middleware/upload.ts) peut dépasser
+// largement le timeout des appels JSON classiques sur une connexion terrain lente.
+const UPLOAD_TIMEOUT_MS = 60000;
+
 // Point d'entrée unique vers l'API : jamais d'URL en dur ailleurs dans l'app, jamais
 // un message d'erreur brut du serveur affiché directement à l'utilisateur (voir
 // mapApiErrorToUserMessage dans chaque écran, qui décide du texte affiché).
@@ -36,15 +45,20 @@ export async function apiRequest<TResponse>(path: string, options: RequestOption
     headers.Authorization = `Bearer ${token}`;
   }
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response: Response;
   try {
     response = await fetch(`${env.apiBaseUrl}${path}`, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
     });
   } catch {
     throw new ApiError(0, "network_error", "Impossible de joindre le serveur. Vérifiez votre connexion.");
+  } finally {
+    clearTimeout(timer);
   }
 
   if (response.status === 204) {
@@ -75,15 +89,20 @@ export async function apiUpload<TResponse>(path: string, formData: FormData): Pr
     throw new ApiError(401, "unauthenticated", "Session expirée, reconnectez-vous.");
   }
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
   let response: Response;
   try {
     response = await fetch(`${env.apiBaseUrl}${path}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: formData,
+      signal: controller.signal,
     });
   } catch {
     throw new ApiError(0, "network_error", "Impossible de joindre le serveur. Vérifiez votre connexion.");
+  } finally {
+    clearTimeout(timer);
   }
 
   const json = (await response.json().catch(() => null)) as TResponse | ApiErrorBody | null;

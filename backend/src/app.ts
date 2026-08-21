@@ -47,8 +47,13 @@ export function createApp() {
   app.use("/api/v1/consultations/:consultationId/photos", photosRouter);
   app.use("/api/v1/availabilities", availabilitiesRouter);
   app.use("/api/v1/lesion-types", lesionTypesRouter);
-  app.use("/api/v1/admin", adminRouter);
+  // Ordre important : /admin/agent-consultations doit être monté AVANT le
+  // préfixe plus général /admin, sinon adminRouter (maintenant restreint au rôle
+  // admin via requireAdminRole sur la plupart de ses routes) intercepterait ces
+  // requêtes en premier et bloquerait les comptes agent avant même d'atteindre
+  // agentConsultationsRouter.
   app.use("/api/v1/admin/agent-consultations", agentConsultationsRouter);
+  app.use("/api/v1/admin", adminRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

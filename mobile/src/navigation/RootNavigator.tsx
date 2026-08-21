@@ -13,6 +13,7 @@ import { LoginScreen } from "../screens/auth/LoginScreen";
 import { SignUpScreen } from "../screens/auth/SignUpScreen";
 import { DashboardScreen } from "../screens/dashboard/DashboardScreen";
 import { AdminNavigator } from "./AdminNavigator";
+import { AgentNavigator } from "./AgentNavigator";
 import { ConsultationNavigator } from "./ConsultationNavigator";
 import type { RootStackParamList } from "./types";
 import type { User } from "@react-native-firebase/auth";
@@ -25,6 +26,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 // majoritaire), /admin/me en repli seulement si le compte n'est pas un patient.
 export function RootNavigator() {
   const status = useAuthStore((s) => s.status);
+  const adminRole = useAuthStore((s) => s.admin?.role);
   const errorMessage = useAuthStore((s) => s.errorMessage);
   const setLoading = useAuthStore((s) => s.setLoading);
   const setSignedOut = useAuthStore((s) => s.setSignedOut);
@@ -37,6 +39,23 @@ export function RootNavigator() {
   // dupliquer la logique de résolution de rôle.
   const resolveProfile = useCallback(
     async (user: User) => {
+      // Après une inscription, SignUpScreen a déjà appelé setSignedInPatient()
+      // directement (résultat immédiat de sa propre requête POST /patients/me,
+      // pas besoin de le redemander). Sans ce garde-fou, l'appel onAuthStateChanged
+      // déclenché par la création du compte Firebase court en parallèle : il repasse
+      // l'écran en "loading" puis relance /patients/me, qui peut échouer en 403 si
+      // le profil n'est pas encore visible côté backend à cet instant précis — et
+      // renvoie alors l'utilisateur vers needsProfile juste après avoir vu son
+      // tableau de bord. On ignore ici toute résolution redondante pour un compte
+      // déjà connecté avec succès.
+      const already = useAuthStore.getState();
+      if (
+        already.firebaseUid === user.uid &&
+        (already.status === "signedInPatient" || already.status === "signedInAdmin")
+      ) {
+        return;
+      }
+
       setLoading();
       try {
         const patient = await getMyProfile();
@@ -64,6 +83,13 @@ export function RootNavigator() {
         const admin = await getMyAdminProfile();
         setSignedInAdmin(admin);
       } catch {
+        // Re-vérifié ici (pas seulement en entrée de fonction) : SignUpScreen a pu
+        // terminer sa propre création de profil pendant les deux appels ci-dessus
+        // et déjà appelé setSignedInPatient() — ne pas régresser vers needsProfile.
+        const resolved = useAuthStore.getState();
+        if (resolved.firebaseUid === user.uid && resolved.status === "signedInPatient") {
+          return;
+        }
         // Compte Firebase valide mais sans profil patient ni admin : signup
         // interrompu avant l'appel à POST /patients/me.
         setNeedsProfile(user.uid);
@@ -116,7 +142,10 @@ export function RootNavigator() {
             <Stack.Screen name="NewConsultation" component={ConsultationNavigator} />
           </>
         ) : (
-          <Stack.Screen name="AdminDashboard" component={AdminNavigator} />
+          // Un compte "agent" (voir AdminProfile.role) atterrit directement sur le
+          // navigateur terrain restreint, jamais sur l'accueil admin complet — voir
+          // requireAdminRole côté backend pour la restriction correspondante.
+          <Stack.Screen name="AdminDashboard" component={adminRole === "agent" ? AgentNavigator : AdminNavigator} />
         )}
       </Stack.Navigator>
     </NavigationContainer>

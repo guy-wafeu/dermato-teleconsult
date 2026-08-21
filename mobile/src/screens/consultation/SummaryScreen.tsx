@@ -8,19 +8,24 @@ import { Icon } from "../../components/icons/Icon";
 import { BODY_ZONE_LABELS } from "../../components/BodyMap";
 import { useTheme } from "../../theme/useTheme";
 import { useConsultationDraftStore } from "../../store/consultationDraftStore";
+import { useOfflineStore } from "../../store/offlineStore";
 import { useIsDevPreview } from "../../hooks/useIsDevPreview";
 import { submitConsultation } from "../../services/api/consultations";
 import { submitWalkInConsultation } from "../../services/api/agent";
+import { queueSubmitLocally } from "../../services/offline/submitQueue";
 import { ApiError } from "../../services/api/client";
 import type { ConsultationStackParamList } from "../../navigation/consultationTypes";
+import type { PhotoSlot } from "../../types/api";
 
 type Props = NativeStackScreenProps<ConsultationStackParamList, "Summary">;
 
 const DUREE_UNITE_LABELS: Record<string, string> = { jours: "jour(s)", semaines: "semaine(s)", mois: "mois", annees: "année(s)" };
+const REQUIRED_PHOTO_SLOTS: PhotoSlot[] = ["vue_generale", "vue_rapprochee"];
 
 export function SummaryScreen({ navigation }: Props) {
   const { colors, spacing, radius, typography } = useTheme();
   const mode = useConsultationDraftStore((s) => s.mode);
+  const clientUuid = useConsultationDraftStore((s) => s.clientUuid);
   const draft = useConsultationDraftStore((s) => s.draft);
   const photos = useConsultationDraftStore((s) => s.photos);
   const consultationId = useConsultationDraftStore((s) => s.consultationId);
@@ -28,6 +33,18 @@ export function SummaryScreen({ navigation }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isDevPreview = useIsDevPreview();
+  const isOnline = useOfflineStore((s) => s.isOnline);
+
+  // "queued"/"uploading" comptent comme prêt pour AVANCER dans le questionnaire
+  // (voir selectRequiredPhotosReady), mais pas pour la soumission finale : le
+  // serveur exige des photos réellement reçues. Utilisé seulement pour choisir
+  // entre envoi immédiat et mise en file (voir handleSubmit) — jamais pour
+  // bloquer le bouton : un agent terrain doit pouvoir enchaîner ses dossiers
+  // sans connexion du tout, sur toute une tournée.
+  const pendingPhotoSlots = REQUIRED_PHOTO_SLOTS.filter(
+    (slot) => !photos.some((p) => p.slot === slot && p.status === "uploaded"),
+  );
+  const canSubmitNow = isOnline && pendingPhotoSlots.length === 0;
 
   function Section({
     title,
@@ -65,18 +82,42 @@ export function SummaryScreen({ navigation }: Props) {
     if (submitting) return;
     if (isDevPreview) {
       reset();
-      navigation.reset({ index: 0, routes: [{ name: "Confirmation", params: { refNumber: 999999 } }] });
+      navigation.reset({ index: 0, routes: [{ name: "Confirmation", params: { refNumber: 999999, mode } }] });
       return;
     }
     if (!consultationId) return;
+
+    // Hors ligne, ou photos requises pas encore réellement reçues côté serveur :
+    // on met l'envoi en file (voir services/offline/submitQueue.ts) et on
+    // enchaîne immédiatement sur l'écran de confirmation plutôt que de bloquer
+    // l'agent — syncEngine rejouera l'envoi automatiquement dès que possible,
+    // exactement comme pour le brouillon/les photos/le consentement. Un vrai
+    // numéro de dossier n'existe que côté serveur : il n'est donc connu qu'une
+    // fois l'envoi réellement passé.
+    if (!canSubmitNow) {
+      queueSubmitLocally({ clientUuid, consultationId, mode });
+      reset();
+      navigation.reset({ index: 0, routes: [{ name: "Confirmation", params: { refNumber: null, mode } }] });
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
       const result = mode === "agent" ? await submitWalkInConsultation(consultationId) : await submitConsultation(consultationId);
-      const refNumber = result.refNumber;
       reset();
-      navigation.reset({ index: 0, routes: [{ name: "Confirmation", params: { refNumber } }] });
+      navigation.reset({ index: 0, routes: [{ name: "Confirmation", params: { refNumber: result.refNumber, mode } }] });
     } catch (err) {
+      // Coupure détectée seulement maintenant (pas en amont par `canSubmitNow`,
+      // ex. réseau tombé entre l'affichage de l'écran et l'appui sur le
+      // bouton) : même traitement que le cas hors ligne plutôt qu'une erreur
+      // bloquante — l'agent ne doit jamais être coincé sur cet écran.
+      if (err instanceof ApiError && err.status === 0) {
+        queueSubmitLocally({ clientUuid, consultationId, mode });
+        reset();
+        navigation.reset({ index: 0, routes: [{ name: "Confirmation", params: { refNumber: null, mode } }] });
+        return;
+      }
       setError(err instanceof ApiError ? err.message : "Impossible d'envoyer votre demande. Réessayez.");
       setSubmitting(false);
     }
@@ -142,6 +183,16 @@ export function SummaryScreen({ navigation }: Props) {
         <Field label="Créneaux sélectionnés" value={`${draft.availabilities?.length ?? 0}`} />
       </Section>
 
+      {!canSubmitNow ? (
+        <Card style={{ backgroundColor: colors.accentSoft, borderColor: colors.accentSoft, marginTop: spacing.md }}>
+          <Text style={[typography.bodyMuted, { color: colors.accentStrong }]}>
+            {!isOnline
+              ? "Vous êtes hors ligne — le dossier sera enregistré sur l'appareil et envoyé automatiquement dès le retour de la connexion. Vous pouvez continuer avec le patient suivant."
+              : "Vos photos sont encore en cours d'envoi — le dossier sera transmis automatiquement dès qu'elles seront reçues. Vous pouvez continuer avec le patient suivant."}
+          </Text>
+        </Card>
+      ) : null}
+
       {error ? (
         <Text style={[typography.bodyMuted, { color: colors.danger, marginTop: spacing.md, marginBottom: spacing.md }]}>
           {error}
@@ -149,7 +200,7 @@ export function SummaryScreen({ navigation }: Props) {
       ) : null}
 
       <View style={{ marginTop: spacing.lg }}>
-        <Button label="Envoyer ma demande" onPress={handleSubmit} loading={submitting} disabled={submitting} />
+        <Button label={canSubmitNow ? "Envoyer ma demande" : "Enregistrer le dossier"} onPress={handleSubmit} loading={submitting} disabled={submitting} />
       </View>
     </ScreenContainer>
   );

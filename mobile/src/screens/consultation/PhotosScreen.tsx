@@ -65,7 +65,17 @@ export function PhotosScreen({ navigation }: Props) {
   const [stepError, setStepError] = useState<string | null>(null);
 
   async function pickAndUpload(slot: PhotoSlot, source: "camera" | "library") {
-    const options = { mediaType: "photo" as const, quality: 1 as const, saveToPhotos: false };
+    // qualité 1 (brut, souvent 8-15 Mo sur un smartphone récent) rendait l'envoi
+    // très lent, en particulier sur une connexion terrain modeste — 0.7 avec un
+    // plafond de résolution donne des fichiers de quelques centaines de Ko à ~1-2
+    // Mo, largement suffisant pour l'examen d'une lésion cutanée par le dermatologue.
+    const options = {
+      mediaType: "photo" as const,
+      quality: 0.7 as const,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      saveToPhotos: false,
+    };
     const result = source === "camera" ? await launchCamera(options) : await launchImageLibrary(options);
 
     if (result.didCancel) return;

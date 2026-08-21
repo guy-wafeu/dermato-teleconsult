@@ -9,7 +9,7 @@ import { TextField } from "../../components/TextField";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useTheme } from "../../theme/useTheme";
 import { useAuthStore } from "../../store/authStore";
-import { listAdminConsultations } from "../../services/api/admin";
+import { consultationPatientName, consultationPatientPhone, listAdminConsultations } from "../../services/api/admin";
 import { listMockAdminConsultations } from "../../services/devPreview/adminMock";
 import type { AdminConsultationListItem, ConsultationStatus } from "../../types/api";
 import type { AdminStackParamList } from "../../navigation/adminTypes";
@@ -52,14 +52,12 @@ export function AdminConsultationsListScreen({ navigation, route }: Props) {
         <Card style={{ marginBottom: spacing.md }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
             <View style={{ flex: 1, marginRight: spacing.md }}>
-              <Text style={[typography.h2, { color: colors.text }]}>
-                {item.patient.prenom} {item.patient.nom}
-              </Text>
+              <Text style={[typography.h2, { color: colors.text }]}>{consultationPatientName(item)}</Text>
               <Text style={[typography.bodyMuted, { color: colors.textMuted, marginTop: spacing.xs }]} numberOfLines={2}>
                 {item.motif ?? "Motif non renseigné"}
               </Text>
               <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing.xs }]}>
-                Dossier n°{String(item.refNumber).padStart(6, "0")} · {item.patient.telephone}
+                Dossier n°{String(item.refNumber).padStart(6, "0")} · {consultationPatientPhone(item)}
               </Text>
             </View>
             <StatusBadge status={item.status} />
@@ -72,7 +70,9 @@ export function AdminConsultationsListScreen({ navigation, route }: Props) {
   return (
     <ScreenContainer scroll={false} padded={false}>
       <View style={{ padding: spacing.xxl, paddingBottom: spacing.lg }}>
-        <Text style={[typography.h1, { color: colors.text }]}>Tous les dossiers</Text>
+        <Button label="← Retour" variant="ghost" fullWidth={false} onPress={() => navigation.goBack()} />
+
+        <Text style={[typography.h1, { color: colors.text, marginTop: spacing.sm }]}>Tous les dossiers</Text>
 
         <TextField
           label="Rechercher un patient"

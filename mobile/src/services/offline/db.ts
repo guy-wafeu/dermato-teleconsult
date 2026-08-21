@@ -42,6 +42,39 @@ export function getDb(): string {
         updated_at TEXT NOT NULL
       );`,
     );
+    // Miroir de photo_queue : le consentement peut être donné avant même que le
+    // dossier existe côté serveur (formulaire rempli hors ligne du début à la
+    // fin) — consultation_id reste NULL jusqu'à ce que syncPendingDrafts le
+    // renseigne (voir consentQueue.ts#setConsentConsultationId), sans quoi
+    // l'étape "Consentement & disponibilités" bloquait toujours hors ligne.
+    QuickSQLite.execute(
+      DB_NAME,
+      `CREATE TABLE IF NOT EXISTS consent_queue (
+        client_uuid TEXT PRIMARY KEY,
+        consultation_id TEXT,
+        mode TEXT NOT NULL,
+        consent_text_version TEXT NOT NULL,
+        status TEXT NOT NULL,
+        last_error TEXT,
+        updated_at TEXT NOT NULL
+      );`,
+    );
+    // Miroir de consent_queue : l'envoi final (SummaryScreen) doit lui aussi
+    // pouvoir être mis en file hors ligne — sans quoi un agent terrain sans
+    // connexion pendant toute sa tournée ne pourrait jamais "terminer" un
+    // dossier et enchaîner sur le suivant (voir syncEngine.ts#syncPendingSubmits,
+    // rejoué en dernier : le serveur exige que les photos soient déjà reçues).
+    QuickSQLite.execute(
+      DB_NAME,
+      `CREATE TABLE IF NOT EXISTS submit_queue (
+        client_uuid TEXT PRIMARY KEY,
+        consultation_id TEXT,
+        mode TEXT NOT NULL,
+        status TEXT NOT NULL,
+        last_error TEXT,
+        updated_at TEXT NOT NULL
+      );`,
+    );
     initialized = true;
   }
   return DB_NAME;

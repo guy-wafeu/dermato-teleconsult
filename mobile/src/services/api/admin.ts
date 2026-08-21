@@ -11,6 +11,19 @@ export function getMyAdminProfile() {
   return apiRequest<AdminProfile>("/admin/me");
 }
 
+// Un agent terrain crée des dossiers pour des tiers sous son propre compte
+// (voir agent.service.ts) — `patient.nom/prenom/telephone` identifie donc le
+// compte connecté, pas forcément la personne consultée. `nomComplet`/
+// `telephoneContact` (saisis à l'étape 1 du questionnaire pour ce dossier
+// précis) sont la source de vérité à afficher dès qu'ils existent.
+export function consultationPatientName(item: Pick<AdminConsultationListItem, "nomComplet" | "patient">): string {
+  return item.nomComplet?.trim() || `${item.patient.prenom} ${item.patient.nom}`;
+}
+
+export function consultationPatientPhone(item: Pick<AdminConsultationListItem, "telephoneContact" | "patient">): string {
+  return item.telephoneContact?.trim() || item.patient.telephone;
+}
+
 export interface AdminStats {
   participants: number;
   pending: number;

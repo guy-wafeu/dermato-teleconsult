@@ -14,6 +14,30 @@ import {
 // l'app compile mais tout appel Firebase échoue au runtime.
 const auth = getAuth();
 
+// Le SDK Firebase Auth (parle directement à Google, jamais à notre backend) n'a
+// aucun timeout par défaut — sur une connexion terrain instable, un identifiant
+// erroné ou une coupure pouvait laisser le bouton "Se connecter" tourner très
+// longtemps avant de rendre la main sans le moindre message. Rejette avec le même
+// code que Firebase utilise pour une vraie coupure réseau (voir
+// mapFirebaseAuthError) pour réutiliser son message déjà traduit.
+const AUTH_TIMEOUT_MS = 20000;
+
+function withAuthTimeout<T>(promise: Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject({ code: "auth/network-request-failed" }), AUTH_TIMEOUT_MS);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 export function subscribeToAuthState(callback: (user: User | null) => void) {
   return onAuthStateChanged(auth, callback);
 }
@@ -26,12 +50,12 @@ export function getCurrentUser(): User | null {
 }
 
 export async function signUpWithEmail(email: string, password: string): Promise<User> {
-  const credential = await createUserWithEmailAndPassword(auth, email, password);
+  const credential = await withAuthTimeout(createUserWithEmailAndPassword(auth, email, password));
   return credential.user;
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<User> {
-  const credential = await signInWithEmailAndPassword(auth, email, password);
+  const credential = await withAuthTimeout(signInWithEmailAndPassword(auth, email, password));
   return credential.user;
 }
 

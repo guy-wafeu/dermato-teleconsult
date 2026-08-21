@@ -48,11 +48,11 @@ export interface TestAdmin {
   adminId: string;
 }
 
-export async function createAdmin(): Promise<TestAdmin> {
+export async function createAdmin(role: "admin" | "agent" = "admin"): Promise<TestAdmin> {
   const suffix = unique();
-  const identity: FakeIdentity = { uid: `admin-${suffix}`, email: `admin-${suffix}@test.local` };
+  const identity: FakeIdentity = { uid: `${role}-${suffix}`, email: `${role}-${suffix}@test.local` };
   const admin = await prisma.adminUser.create({
-    data: { firebaseUid: identity.uid, nom: "Konan", prenom: "Yves", email: identity.email! },
+    data: { firebaseUid: identity.uid, nom: "Konan", prenom: "Yves", email: identity.email!, role },
   });
   return { identity, authHeader: authHeader(identity), adminId: admin.id };
 }

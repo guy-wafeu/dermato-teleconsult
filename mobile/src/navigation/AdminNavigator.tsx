@@ -4,8 +4,7 @@ import { AdminDashboardScreen } from "../screens/admin/AdminDashboardScreen";
 import { AdminConsultationsListScreen } from "../screens/admin/AdminConsultationsListScreen";
 import { AdminConsultationDetailScreen } from "../screens/admin/AdminConsultationDetailScreen";
 import { AdminEditConsultationScreen } from "../screens/admin/AdminEditConsultationScreen";
-import { AgentNewConsultationStart } from "../screens/admin/AgentNewConsultationStart";
-import { ConsultationNavigator } from "./ConsultationNavigator";
+import { AgentNavigator } from "./AgentNavigator";
 import type { AdminStackParamList } from "./adminTypes";
 
 const Stack = createNativeStackNavigator<AdminStackParamList>();
@@ -17,10 +16,10 @@ export function AdminNavigator() {
       <Stack.Screen name="AdminConsultationsList" component={AdminConsultationsListScreen} />
       <Stack.Screen name="AdminConsultationDetail" component={AdminConsultationDetailScreen} />
       <Stack.Screen name="AdminEditConsultation" component={AdminEditConsultationScreen} />
-      <Stack.Screen name="AgentNewConsultationStart" component={AgentNewConsultationStart} />
-      {/* Réutilise intégralement le questionnaire patient (voir consultationDraftStore#mode
-          et hooks/useIsDevPreview) — aucun écran dupliqué pour le mode terrain. */}
-      <Stack.Screen name="AgentConsultation" component={ConsultationNavigator} />
+      {/* Mode terrain imbriqué (voir AgentNavigator.tsx) — mêmes deux écrans que
+          pour un compte de rôle "agent", accessibles ici en plus depuis
+          l'accueil admin. */}
+      <Stack.Screen name="AgentFlow" component={AgentNavigator} />
     </Stack.Navigator>
   );
 }

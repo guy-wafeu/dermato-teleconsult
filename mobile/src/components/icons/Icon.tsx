@@ -11,7 +11,9 @@ export type IconName =
   | "eyeOff"
   | "bell"
   | "arrowRight"
+  | "arrowLeft"
   | "chevronRight"
+  | "phone"
   | "message"
   | "document"
   | "calendar"
@@ -95,8 +97,22 @@ function renderPaths(name: IconName, common: Record<string, unknown>, color: str
           <Path d="M13 6.5L18.5 12L13 17.5" {...common} />
         </>
       );
+    case "arrowLeft":
+      return (
+        <>
+          <Line x1={19.5} y1={12} x2={5.5} y2={12} {...common} />
+          <Path d="M11 6.5L5.5 12L11 17.5" {...common} />
+        </>
+      );
     case "chevronRight":
       return <Path d="M9 5.5L15.5 12L9 18.5" {...common} />;
+    case "phone":
+      return (
+        <Path
+          d="M6.6 3.5h2.3l1.4 4.1-1.9 1.6a12 12 0 0 0 5.4 5.4l1.6-1.9 4.1 1.4v2.3a1.5 1.5 0 0 1-1.6 1.5A16.5 16.5 0 0 1 5.1 5.1a1.5 1.5 0 0 1 1.5-1.6Z"
+          {...common}
+        />
+      );
     case "message":
       return (
         <Path

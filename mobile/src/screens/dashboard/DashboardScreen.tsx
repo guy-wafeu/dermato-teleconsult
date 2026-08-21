@@ -87,11 +87,20 @@ export function DashboardScreen({ navigation }: Props) {
   }
 
   function renderConsultation(item: ConsultationSummary) {
+    // Un même compte (notamment un compte agent partagé, voir AgentNavigator)
+    // peut enregistrer des dossiers pour des personnes différentes — le nom du
+    // patient de CE dossier identifie donc mieux la liste que le numéro seul.
+    const title = item.nomComplet?.trim() || `Dossier n°${String(item.refNumber).padStart(6, "0")}`;
     return (
       <Card key={item.id} style={{ marginBottom: spacing.md }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
           <View style={{ flex: 1, marginRight: spacing.md }}>
-            <Text style={[typography.h2, { color: colors.text }]}>Dossier n°{String(item.refNumber).padStart(6, "0")}</Text>
+            <Text style={[typography.h2, { color: colors.text }]} numberOfLines={1}>
+              {title}
+            </Text>
+            <Text style={[typography.caption, { color: colors.textMuted, marginTop: 2 }]}>
+              Dossier n°{String(item.refNumber).padStart(6, "0")}
+            </Text>
             <Text style={[typography.bodyMuted, { color: colors.textMuted, marginTop: spacing.xs }]} numberOfLines={2}>
               {item.motif ?? "Brouillon non complété"}
             </Text>

@@ -81,6 +81,11 @@ enum JourSemaine {
 
 enum AdminRole {
   admin
+  // Compte partagé par les agents terrain (voir agent.routes.ts) : peut
+  // seulement créer/corriger ses propres dossiers walk-in avant soumission,
+  // jamais la liste complète, les statistiques, ou changer un statut — voir
+  // middleware/rbac.ts#requireFullAdmin, qui exclut ce rôle des routes admin.
+  agent
 }
 
 // ---------- Comptes ----------

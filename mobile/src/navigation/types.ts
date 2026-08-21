@@ -4,6 +4,9 @@
 // avec état partagé à préserver entre les écrons patient.
 export type RootStackParamList = {
   Onboarding: undefined;
+  // Écran de connexion unique pour tous les rôles : le backend décide déjà
+  // patient/admin/agent à partir du compte utilisé, la résolution de rôle après
+  // connexion (voir RootNavigator) redirige automatiquement vers le bon espace.
   Login: undefined;
   SignUp: undefined;
   PatientDashboard: undefined;
