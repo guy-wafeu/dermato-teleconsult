@@ -3,6 +3,8 @@ import { prisma } from "../../db/client.js";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../../lib/errors.js";
 import { notifyConsultationSubmitted } from "../../services/notifications.js";
 import { appendConsultationRow } from "../../services/googleSheets.js";
+import { buildReportFileName, generateConsultationReportPdf, uploadReportPdfToDrive } from "../../services/pdfReport.js";
+import { logger } from "../../lib/logger.js";
 import type { ConsultationDraftInput } from "./consultations.schemas.js";
 
 const REQUIRED_PHOTO_SLOTS = ["vue_generale", "vue_rapprochee"] as const;
@@ -235,6 +237,21 @@ export async function submitConsultation(patientId: string, id: string) {
       statutConfirmation: updated.status,
       dateSoumission: updated.submittedAt?.toISOString() ?? null,
     });
+  }
+
+  // Rapport PDF combinant tout le questionnaire + les photos, déposé dans le
+  // même dossier Drive que les photos brutes (voir services/pdfReport.ts) —
+  // hors transaction et non bloquant comme le SMS/Sheets ci-dessus : un échec
+  // de génération ou d'upload ne doit jamais faire échouer une soumission par
+  // ailleurs réussie, juste laisser le dossier sans PDF récapitulatif.
+  try {
+    const pdfBuffer = await generateConsultationReportPdf(
+      updated,
+      patient ? { telephone: patient.telephone, email: patient.email } : null,
+    );
+    await uploadReportPdfToDrive(pdfBuffer, buildReportFileName(updated));
+  } catch (error) {
+    logger.error({ err: error, consultationId: id }, "Échec de la génération/envoi du rapport PDF");
   }
 
   return updated;

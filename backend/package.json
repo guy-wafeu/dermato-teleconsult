@@ -29,6 +29,7 @@
     "googleapis": "^176.0.0",
     "helmet": "^8.0.0",
     "multer": "^2.2.0",
+    "pdfkit": "^0.19.1",
     "pino": "^9.5.0",
     "pino-http": "^10.3.0",
     "zod": "^3.23.8"
@@ -38,6 +39,7 @@
     "@types/express": "^4.17.21",
     "@types/multer": "^2.2.0",
     "@types/node": "^20.17.6",
+    "@types/pdfkit": "^0.17.6",
     "@types/supertest": "^6.0.2",
     "prisma": "^5.22.0",
     "supertest": "^7.0.0",
