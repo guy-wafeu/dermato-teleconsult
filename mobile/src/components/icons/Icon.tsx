@@ -30,7 +30,8 @@ export type IconName =
   | "users"
   | "menu"
   | "home"
-  | "search";
+  | "search"
+  | "sparkle";
 
 interface IconProps {
   name: IconName;
@@ -225,6 +226,8 @@ function renderPaths(name: IconName, common: Record<string, unknown>, color: str
           <Path d="M6 10v9.5a1 1 0 0 0 1 1h3.5v-6h3v6H17a1 1 0 0 0 1-1V10" {...common} />
         </>
       );
+    case "sparkle":
+      return <Path d="M12 2.5L13.9 9.3 20.5 11L13.9 12.7 12 19.5 10.1 12.7 3.5 11L10.1 9.3Z" fill={color} stroke="none" />;
     case "search":
       return (
         <>

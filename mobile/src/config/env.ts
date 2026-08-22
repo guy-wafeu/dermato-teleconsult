@@ -7,11 +7,11 @@
 // qu'avec l'émulateur AVD par défaut, pas avec un téléphone physique.
 const DEV_API_URL = "http://localhost:8080/api/v1";
 
-// Tunnel Cloudflare temporaire vers le backend local (voir demande explicite de
-// build APK à envoyer au client sans déploiement Cloud Run) — ne fonctionne que
-// tant que la machine de dev + le tunnel restent actifs. À remplacer par une
-// vraie URL de production dès que le backend est déployé pour de bon.
-const PROD_API_URL = "https://whether-temp-bodies-johnny.trycloudflare.com/api/v1";
+// Backend déployé sur Render (voir backend/README ou la conversation de mise en
+// prod) — tourne en permanence, indépendamment de toute machine de dev. Palier
+// gratuit Render : le service s'endort après ~15 min sans trafic, la toute
+// première requête après une pause peut prendre 30-50s le temps qu'il se réveille.
+const PROD_API_URL = "https://dermato-backend-esfm.onrender.com/api/v1";
 
 export const env = {
   apiBaseUrl: __DEV__ ? DEV_API_URL : PROD_API_URL,

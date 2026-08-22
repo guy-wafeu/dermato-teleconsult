@@ -24,10 +24,16 @@ interface RequestOptions {
 // laisse `fetch` en attente indéfiniment — côté RootNavigator, ça se traduit par un
 // écran de chargement bloqué pour toujours au lieu d'un message d'erreur avec
 // bouton "Réessayer". Vécu en pratique avec le tunnel Cloudflare de dev.
-const REQUEST_TIMEOUT_MS = 15000;
+// 70s (pas 15s) : le backend de prod tourne sur le palier gratuit de Render, qui
+// met le service en veille après ~15 min sans trafic — la toute première requête
+// après une pause peut prendre jusqu'à 50s le temps qu'il se réveille (annoncé par
+// Render lui-même). Un timeout plus court déclenchait "Connexion au serveur
+// impossible" alors que le serveur était simplement en train de démarrer.
+const REQUEST_TIMEOUT_MS = 70000;
 // Un envoi de photo (jusqu'à 25 Mo, voir middleware/upload.ts) peut dépasser
-// largement le timeout des appels JSON classiques sur une connexion terrain lente.
-const UPLOAD_TIMEOUT_MS = 60000;
+// largement le timeout des appels JSON classiques sur une connexion terrain lente —
+// et doit lui aussi couvrir un éventuel réveil du service à froid (voir ci-dessus).
+const UPLOAD_TIMEOUT_MS = 90000;
 
 // Point d'entrée unique vers l'API : jamais d'URL en dur ailleurs dans l'app, jamais
 // un message d'erreur brut du serveur affiché directement à l'utilisateur (voir
